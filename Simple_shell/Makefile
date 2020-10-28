@@ -1,4 +1,4 @@
-PRGNAME = ss
+PRGNAME = SimpleShell
 SS_SRC = main.c SimpleShell.c 
 all: $(PRGNAME)
 

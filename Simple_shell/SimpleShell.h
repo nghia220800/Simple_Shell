@@ -8,9 +8,13 @@
 #include<fcntl.h>
 #include<time.h>
 #include<stdbool.h>
+#include<malloc.h>
 
 #define TOKEN_BUFSIZE 64
 #define TOKEN_SEPERATOR " \t\r\n\a"
+
+extern int numOfLines;
+extern char** historyLines;
 
 void shell_loop();
 char* ss_readline();
