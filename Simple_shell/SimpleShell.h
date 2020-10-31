@@ -21,3 +21,5 @@ char* ss_readline();
 char** ss_splitline(char* line);
 int ss_launch(char **args);
 int ss_execute(char **args);
+int parsePipe(char* str, char** strpiped);
+void execArgsPiped(char** parsed, char** parsedpipe);

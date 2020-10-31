@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include<sys/types.h>
 char* history = nullptr;
 //dem so phan tu trong mang lenh da nhap, lam de tien su dung ve sau
 int parse_counter(char** parse)
