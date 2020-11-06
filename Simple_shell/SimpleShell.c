@@ -1,20 +1,47 @@
 #include "SimpleShell.h"
 int numOfLines=0;
 char** historyLines=NULL;
-
+char** parsePipeRedirect(char * line);
 
 void shell_loop(){
   char *line;
   char **args;
-  int status;
+  int type;
+  char **args1;
+  char **test = malloc(2* sizeof(char*));
+  int status; 
   historyLines=malloc(numOfLines*sizeof(char*));
   do {
     printf("SimpleShell> ");
     line = ss_readline();
-    args = ss_splitline(line);
-    status = ss_execute(args);
+    type = cmd_type(line);
+    test = parsePipeRedirect(line);
+
+    args = ss_splitline(test[0]);
+    args1 = ss_splitline(test[1]);
+
+    if(type == 1) //out 1
+    {
+      out_redirect(args,args1);
+    }
+    else if(type == 2) //in 2
+    {
+      in_redirect(args,args1);
+    }
+    else if (type ==3) // pipe 3
+    {
+      execArgsPiped(args, args1);
+      //pipe here
+    }
+    else
+    {
+      args = ss_splitline(line);
+      status = ss_execute(args);
+    }
     free(line);
     free(args);
+    //free(args1);
+    type = 0;
   } while (status);
   for (int i=0;i<numOfLines;i++){
     free(historyLines[i]);
@@ -99,7 +126,6 @@ int ss_launch(char **args)
     //wait until child process is terminated normally or killed by signal
       wpid = waitpid(pid, &status, 0);
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-
   }
   return 1;
 }
@@ -150,7 +176,7 @@ int ss_history(char **args){
   }else{
     for (int i=0;i<numOfLines;i++){
       printf("%d. ",i+1);
-      printf(historyLines[i]);
+      printf("%s",historyLines[i]);
       // if (strcmp(historyLines[i+1],"!!\n")==0){
       //   printf("\n");
       // }
@@ -187,22 +213,93 @@ int ss_execute(char **args)
   return ss_launch(args);
 }
 
-// function for finding pipe 
-int parsePipe(char* str, char** strpiped) 
-{ 
-    int i; 
-    for (i = 0; i < 2; i++) { 
-        strpiped[i] = strsep(&str, "|"); 
-        if (strpiped[i] == NULL) 
-            break; 
-    } 
-  
-    if (strpiped[1] == NULL) 
-        return 0; // returns zero if no pipe is found. 
-    else { 
-        return 1; 
-    } 
-} 
+
+int cmd_type(char* line)
+{
+  for (int i = 0; i<strlen(line);i++)
+  {
+    if(line[i] == '|')
+    {
+      return 3;
+    }
+    if(line[i] == '>')
+    { return 1;
+    }
+    else if(line[i] == '<')
+    { return 2;
+    }
+  }
+}
+
+void out_redirect(char **args, char** fileName)
+{
+  pid_t wpid;
+  pid_t pid=fork();
+  if (pid<0)
+  {
+    perror("fork failed");
+    return;
+  }
+  if (pid==0)
+  {
+    int fd = open(fileName[0], O_CREAT| O_WRONLY);
+    if (fd < 0)
+  {
+    perror("open error");
+    return ;
+  }
+    close(fd);
+    execvp(args[0],args);
+    perror("execvp failed."); 
+    exit(0);   
+  }
+    wpid = waitpid(pid, NULL, 0);
+}
+
+void in_redirect(char** args, char** fileName)
+{
+  pid_t wpid;
+  pid_t pid = fork();
+  if (pid<0)
+  {
+    perror("fork failed");
+    return;
+  }
+  if (pid==0)
+  {
+    int fd=open(fileName[0],O_RDONLY,0666);
+    if (fd<0)
+    {
+      perror("open failed");
+      return ;
+    }
+    if (dup2(fd,STDIN_FILENO)<0)
+    {
+      perror("dup2 failed");
+      return;
+    }
+    close(fd);
+    execvp(args[0],args);
+    perror("execvp failed");
+    exit(EXIT_FAILURE);
+    }
+    wpid = waitpid(pid, NULL, 0);
+}  
+
+//Parse Pipe and Redirect
+char** parsePipeRedirect(char* line) 
+{
+  int bufsize = 2;
+  char **tokens = (char**)malloc(bufsize * sizeof(char*));
+  char *token;
+
+  token = strtok(line, delimPipeRedirect);
+  tokens[0] = token;
+  token=strtok(NULL,"\n");
+  tokens[1]= token;  
+  return tokens;
+}
+
 
 void execArgsPiped(char** parsed, char** parsedpipe) 
 { 
@@ -211,12 +308,12 @@ void execArgsPiped(char** parsed, char** parsedpipe)
     pid_t p1, p2; 
   
     if (pipe(pipefd) < 0) { 
-        printf("\nPipe could not be initialized"); 
+        perror("\nPipe could not be initialized"); 
         return; 
     } 
     p1 = fork(); 
     if (p1 < 0) { 
-        printf("\nCould not fork"); 
+        perror("\nCould not fork"); 
         return; 
     } 
   
@@ -228,7 +325,7 @@ void execArgsPiped(char** parsed, char** parsedpipe)
         close(pipefd[1]); 
   
         if (execvp(parsed[0], parsed) < 0) { 
-            printf("\nCould not execute command 1.."); 
+            perror("\nCould not execute command 1.."); 
             exit(0); 
         } 
     } else { 
@@ -236,7 +333,7 @@ void execArgsPiped(char** parsed, char** parsedpipe)
         p2 = fork(); 
   
         if (p2 < 0) { 
-            printf("\nCould not fork"); 
+            perror("\nCould not fork"); 
             return; 
         } 
   
@@ -247,7 +344,7 @@ void execArgsPiped(char** parsed, char** parsedpipe)
             dup2(pipefd[0], STDIN_FILENO); 
             close(pipefd[0]); 
             if (execvp(parsedpipe[0], parsedpipe) < 0) { 
-                printf("\nCould not execute command 2.."); 
+                perror("\nCould not execute command 2.."); 
                 exit(0); 
             } 
         } else { 
@@ -257,4 +354,3 @@ void execArgsPiped(char** parsed, char** parsedpipe)
         } 
     } 
 } 
-  

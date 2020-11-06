@@ -12,6 +12,7 @@
 
 #define TOKEN_BUFSIZE 64
 #define TOKEN_SEPERATOR " \t\r\n\a"
+#define delimPipeRedirect "|><"
 
 extern int numOfLines;
 extern char** historyLines;
@@ -21,5 +22,7 @@ char* ss_readline();
 char** ss_splitline(char* line);
 int ss_launch(char **args);
 int ss_execute(char **args);
-int parsePipe(char* str, char** strpiped);
-void execArgsPiped(char** parsed, char** parsedpipe);
+char** parseRE(char* line);
+int cmd_type(char* line);
+void out_redirect(char **args, char** filename);
+void in_redirect(char** args, char** filename);

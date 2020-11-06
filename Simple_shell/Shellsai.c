@@ -28,7 +28,6 @@ void shell_loop(){
   {
     args = ss_splitline(line);
     status = ss_execute(args);
-
   }
   free(line);
   free(args);
