@@ -1,7 +1,6 @@
 #include "SimpleShell.h"
 int numOfLines=0;
 char** historyLines=NULL;
-char** parsePipeRedirect(char * line);
 
 void shell_loop(){
   char *line;
@@ -223,12 +222,15 @@ int cmd_type(char* line)
       return 3;
     }
     if(line[i] == '>')
-    { return 1;
+    { //out
+      return 1;
     }
     else if(line[i] == '<')
-    { return 2;
-    }
+    { // in
+       return 2;
+    }    
   }
+  return 0;
 }
 
 void out_redirect(char **args, char** fileName)
@@ -242,18 +244,26 @@ void out_redirect(char **args, char** fileName)
   }
   if (pid==0)
   {
-    int fd = open(fileName[0], O_CREAT| O_WRONLY);
+    int fd = open(fileName[0], O_CREAT| O_WRONLY, 0666);
     if (fd < 0)
   {
     perror("open error");
     return ;
   }
-    close(fd);
-    execvp(args[0],args);
-    perror("execvp failed."); 
-    exit(0);   
+  
+  if (dup2(fd,STDOUT_FILENO)<0)
+  {
+    perror("dup2 failed");
+    return;
   }
-    wpid = waitpid(pid, NULL, 0);
+  close(fd);
+    if(execvp(args[0],args)<0)
+    {
+      perror("execvp failed."); 
+      exit(0);   
+    }
+  }
+  wpid = waitpid(pid, NULL, 0);
 }
 
 void in_redirect(char** args, char** fileName)
@@ -279,9 +289,11 @@ void in_redirect(char** args, char** fileName)
       return;
     }
     close(fd);
-    execvp(args[0],args);
-    perror("execvp failed");
-    exit(EXIT_FAILURE);
+    if(execvp(args[0],args)<0)
+    {
+      perror("execvp failed");
+      exit(EXIT_FAILURE);
+    }
     }
     wpid = waitpid(pid, NULL, 0);
 }  
@@ -347,10 +359,11 @@ void execArgsPiped(char** parsed, char** parsedpipe)
                 perror("\nCould not execute command 2.."); 
                 exit(0); 
             } 
-        } else { 
-            // parent executing, waiting for two children 
-            wait(NULL); 
-            wait(NULL); 
         } 
     } 
+    close(pipefd[0]);
+    close(pipefd[1]);
+
+    waitpid(p1,NULL,0);
+    waitpid(p2,NULL,0);
 } 
