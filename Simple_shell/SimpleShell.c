@@ -7,17 +7,17 @@ void shell_loop(){
   char **args;
   int type;
   char **args1;
-  char **test = malloc(2* sizeof(char*));
+  char **partition = malloc(2* sizeof(char*));
   int status; 
   historyLines=malloc(numOfLines*sizeof(char*));
   do {
     printf("SimpleShell> ");
     line = ss_readline();
     type = cmd_type(line);
-    test = parsePipeRedirect(line);
+    partition = parsePipeRedirect(line);
 
-    args = ss_splitline(test[0]);
-    args1 = ss_splitline(test[1]);
+    args = ss_splitline(partition[0]);
+    args1 = ss_splitline(partition[1]);
 
     if(type == 1) //out 1
     {
@@ -30,16 +30,13 @@ void shell_loop(){
     else if (type ==3) // pipe 3
     {
       execArgsPiped(args, args1);
-      //pipe here
     }
     else
     {
-      args = ss_splitline(line);
       status = ss_execute(args);
     }
     free(line);
     free(args);
-    //free(args1);
     type = 0;
   } while (status);
   for (int i=0;i<numOfLines;i++){
@@ -61,9 +58,8 @@ char* ss_readline(){
           exit(EXIT_FAILURE);
         }
     }else{
-      //char* currentLine=malloc((strlen(line)+1)*sizeof(char));
       char* currentLine=strdup(line);
-       if (numOfLines==0 ||strcmp(historyLines[numOfLines-1],currentLine)!=0){
+      if (numOfLines==0 ||strcmp(historyLines[numOfLines-1],currentLine)!=0){
         numOfLines++;
         historyLines=realloc(historyLines, numOfLines * sizeof(char*));
         historyLines[numOfLines-1]=currentLine;
@@ -176,9 +172,6 @@ int ss_history(char **args){
     for (int i=0;i<numOfLines;i++){
       printf("%d. ",i+1);
       printf("%s",historyLines[i]);
-      // if (strcmp(historyLines[i+1],"!!\n")==0){
-      //   printf("\n");
-      // }
     }
   }
   return 1;
@@ -218,7 +211,7 @@ int cmd_type(char* line)
   for (int i = 0; i<strlen(line);i++)
   {
     if(line[i] == '|')
-    {
+    {//pipe
       return 3;
     }
     if(line[i] == '>')
